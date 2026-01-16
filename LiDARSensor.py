@@ -497,7 +497,7 @@ class NetworkRPLidar:
         print(f"Network Lidar: Listening on 0.0.0.0:{self.port}...")
         # print("Waiting for connection from Raspberry Pi...")
         # self.conn, self.addr = self.sock.accept() # Moved to iter_measurements to prevent blocking init
-        # print(f"Network Lidar: Connected by {self.addr}")
+        self.last_angle = 360.0 # Track previous angle to detect wrap-around
 
     def iter_measurements(self, max_buf_meas=3000):
         # We ignore max_buf_meas as we just stream what we get
@@ -511,12 +511,16 @@ class NetworkRPLidar:
             print(f"Network Lidar: Connected by {self.addr}")
 
         while True:
-            try:
-                # Check connection
-                if not self.conn:
-                    return
-
-                # Robustly read 'struct_len' bytes
+                # Resync logic: Read 1 byte until we find 0xA5
+                while True:
+                    if not self.conn: return
+                    sync = self.conn.recv(1)
+                    if not sync: return
+                    if sync == b'\xa5':
+                        break
+                    # If we are here, we are skipping garbage bytes to find sync
+                
+                # Now read the remaining 9 bytes (struct_len)
                 data = b''
                 while len(data) < struct_len:
                     if not self.conn: return
@@ -527,9 +531,16 @@ class NetworkRPLidar:
                     data += packet
                     
                 quality, angle, distance = struct.unpack(struct_fmt, data)
+                
+                # Detect start of new scan (angle wrap-around from 359 -> 0)
+                new_scan = False
+                if angle < self.last_angle:
+                     new_scan = True
+                self.last_angle = angle
+                
                 # if random.randint(0, 100) == 0: 
-                print(f"DEBUG RX: {angle:.1f}deg, {distance:.1f}mm")
-                yield (0, quality, angle, distance) 
+                # print(f"DEBUG RX: {angle:.1f}deg, {distance:.1f}mm")
+                yield (new_scan, quality, angle, distance) 
             except OSError as e:
                 print(f"Network Lidar: Socket Error: {e}")
                 return # Socket closed or bad descriptor

@@ -110,7 +110,9 @@ def run_sender(host, port, device_port):
         print("Streaming data... (Press Enter for Turn Cmd)")
         
         for new_scan, quality, angle, distance in iterator:
-            payload = struct.pack('<Bff', quality, angle, distance)
+            # Protocol: Sync Byte (0xA5) + Quality (1) + Angle (4) + Distance (4) = 10 bytes
+            pay_content = struct.pack('<Bff', quality, angle, distance)
+            payload = b'\xa5' + pay_content
             try:
                 sock.sendall(payload)
                 count += 1
