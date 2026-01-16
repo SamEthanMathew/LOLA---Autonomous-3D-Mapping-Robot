@@ -490,7 +490,7 @@ class LidarSensor:
         # otherwise we might need to initialize it here if specific port passed.
         if not hasattr(self, 'lidar'):
              print(f"Attempting to connect to specific/fallback port: {port}")
-             self.lidar = RPLidar(port, timeout=5, max_buf_meas=3000)
+             self.lidar = RPLidar(port, timeout=5)
         
         # Robust initialization
         try:
@@ -545,7 +545,7 @@ class LidarSensor:
                 print(f"  Trying baudrate: {baud}...")
                 try:
                     # Try to connect and get info (reduced timeout for faster checks)
-                    temp_lidar = RPLidar(port, baudrate=baud, timeout=2, max_buf_meas=3000)
+                    temp_lidar = RPLidar(port, baudrate=baud, timeout=2)
                     # Force stop in case it's already spinning
                     try:
                         temp_lidar.stop()
@@ -557,7 +557,7 @@ class LidarSensor:
                     print(f"Success! Found LiDAR on {port} at {baud} baud: {info}")
                     temp_lidar.disconnect()
                     # Re-initialize the main lidar object with the correct baudrate
-                    self.lidar = RPLidar(port, baudrate=baud, timeout=5, max_buf_meas=3000)
+                    self.lidar = RPLidar(port, baudrate=baud, timeout=5)
                     self.port = port
                     return port
                 except Exception as e:
@@ -597,8 +597,10 @@ class LidarSensor:
                 valid_points_in_rev = 0
                 rev_start_time = time.time()
                 
+                
                 # Use iter_measurments for raw data access (avoid buffering/grouping latency)
-                for new_scan, quality, angle, distance in self.lidar.iter_measurments():
+                # Increasing buffer here to prevent overflow on Pi
+                for new_scan, quality, angle, distance in self.lidar.iter_measurments(max_buf_meas=3000):
                     if not self.running:
                         break
                     
