@@ -852,6 +852,8 @@ if __name__ == "__main__":
                     # Non-interactive mode (e.g. background process), simply sleep
                     time.sleep(1)
                     continue
+                
+                print(f"DEBUG: Received command '{cmd}'") # Debug print
                     
                 if cmd == 's':
                     # Save Map
@@ -968,44 +970,45 @@ if __name__ == "__main__":
                              save_msg = f"Saved to {export_dir}/"
             
             # --- Rendering ---
-            screen.fill(COLOR_BG)
-            
-            # center_x/y is now the WORLD ORIGIN (0,0) on screen
-            map_origin_x = offset_x + view_offset_x
-            map_origin_y = offset_y + view_offset_y
-
-            # 1. Draw Grid (Centered on World Origin)
-            # Calculate grid step size
-            steps = [500, 1000, 2000, 5000, 10000] # 0.5m, 1m, 2m, 5m, 10m
-            
-            # Find closest nice step
-            visible_radius_mm = min(WIDTH, HEIGHT) / 2 / scale
-            grid_step_mm = 1000
-            for s in steps:
-                if visible_radius_mm / s >= 2.5: 
-                   grid_step_mm = s
-            
-            # Draw circles centered on World Origin
-            current_r_mm = grid_step_mm
-            while True:
-                r_px = int(current_r_mm * scale)
-                if r_px > max(WIDTH, HEIGHT) * 2: # Stop if far off screen
-                    break
+            if not args.headless:
+                screen.fill(COLOR_BG)
+                
+                # center_x/y is now the WORLD ORIGIN (0,0) on screen
+                map_origin_x = offset_x + view_offset_x
+                map_origin_y = offset_y + view_offset_y
+    
+                # 1. Draw Grid (Centered on World Origin)
+                # Calculate grid step size
+                steps = [500, 1000, 2000, 5000, 10000] # 0.5m, 1m, 2m, 5m, 10m
+                
+                # Find closest nice step
+                visible_radius_mm = min(WIDTH, HEIGHT) / 2 / scale
+                grid_step_mm = 1000
+                for s in steps:
+                    if visible_radius_mm / s >= 2.5: 
+                       grid_step_mm = s
+                
+                # Draw circles centered on World Origin
+                current_r_mm = grid_step_mm
+                while True:
+                    r_px = int(current_r_mm * scale)
+                    if r_px > max(WIDTH, HEIGHT) * 2: # Stop if far off screen
+                        break
+                        
+                    # Only draw if roughly visible? Pygame handles clipping.
+                    pygame.draw.circle(screen, COLOR_GRID, (int(map_origin_x), int(map_origin_y)), r_px, 1)
                     
-                # Only draw if roughly visible? Pygame handles clipping.
-                pygame.draw.circle(screen, COLOR_GRID, (int(map_origin_x), int(map_origin_y)), r_px, 1)
+                    # Label along the axis
+                    dist_m = current_r_mm / 1000
+                    label_text = f"{dist_m:.1f}m" if dist_m % 1 != 0 else f"{int(dist_m)}m"
+                    label = font_label.render(label_text, True, COLOR_GRID)
+                    screen.blit(label, (map_origin_x + 5, map_origin_y - r_px - 15))
+                    
+                    current_r_mm += grid_step_mm
                 
-                # Label along the axis
-                dist_m = current_r_mm / 1000
-                label_text = f"{dist_m:.1f}m" if dist_m % 1 != 0 else f"{int(dist_m)}m"
-                label = font_label.render(label_text, True, COLOR_GRID)
-                screen.blit(label, (map_origin_x + 5, map_origin_y - r_px - 15))
-                
-                current_r_mm += grid_step_mm
-            
-            # Draw Axes (World Frame)
-            pygame.draw.line(screen, COLOR_AXIS, (map_origin_x - 10000, map_origin_y), (map_origin_x + 10000, map_origin_y), 1)
-            pygame.draw.line(screen, COLOR_AXIS, (map_origin_x, map_origin_y - 10000), (map_origin_x, map_origin_y + 10000), 1)
+                # Draw Axes (World Frame)
+                pygame.draw.line(screen, COLOR_AXIS, (map_origin_x - 10000, map_origin_y), (map_origin_x + 10000, map_origin_y), 1)
+                pygame.draw.line(screen, COLOR_AXIS, (map_origin_x, map_origin_y - 10000), (map_origin_x, map_origin_y + 10000), 1)
 
             # 2. Process Data
             data_points = lidar.getLastRevolutionData()
@@ -1250,8 +1253,10 @@ if __name__ == "__main__":
                  screen.blit(save_surf, (WIDTH // 2 - save_surf.get_width() // 2, HEIGHT - 50))
 
             # Update display
-            pygame.display.flip()
-            clock.tick(30)            
+            if not args.headless:
+                pygame.display.flip()
+            # If headless, we still need to tick clock to not consume 100% CPU
+            clock.tick(30)
             
     except KeyboardInterrupt:
         pass
