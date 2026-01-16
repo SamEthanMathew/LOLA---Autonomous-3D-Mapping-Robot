@@ -16,6 +16,7 @@ from numba import jit
 import argparse
 import socket
 import struct
+import random
 
 # --- SLAM Implementation ---
 def best_fit_transform(A, B):
@@ -533,8 +534,11 @@ class NetworkRPLidar:
                     data += packet
                     
                 new_scan_int, quality, angle, distance = struct.unpack(struct_fmt, data)
-                # new_scan = bool(new_scan_int) # Packet flag seems spammy/unreliable
                 
+                # DEBUG: Print Raw Hex and Values to diagnose protocol mismatch
+                if random.randint(0, 1000) == 0: 
+                     print(f"RAW: {data.hex()} | A={angle:.1f} D={distance:.0f}", flush=True)
+
                 # Robust Logic: Detect start of new scan via angle wrap-around
                 new_scan = False
                 if angle < self.last_angle and (self.last_angle - angle) > 100:
@@ -542,6 +546,9 @@ class NetworkRPLidar:
                      new_scan = True
                 self.last_angle = angle
                 yield (new_scan, quality, angle, distance) 
+            except struct.error:
+                 print(f"Struct Error (Size mismatch? Data: {len(data)})")
+                 return
             except OSError as e:
                 print(f"Network Lidar: Socket Error: {e}")
                 return # Socket closed or bad descriptor
