@@ -846,12 +846,8 @@ if __name__ == "__main__":
         
         while True:
             try:
-                if sys.stdin.isatty():
-                    cmd = input().strip().lower()
-                else:
-                    # Non-interactive mode (e.g. background process), simply sleep
-                    time.sleep(1)
-                    continue
+                # Simple blocking input
+                cmd = input().strip().lower()
                 
                 print(f"DEBUG: Received command '{cmd}'") # Debug print
                     
@@ -1264,4 +1260,3 @@ if __name__ == "__main__":
         print("Stopping LiDAR...")
         lidar.stop()
         pygame.quit()
-
