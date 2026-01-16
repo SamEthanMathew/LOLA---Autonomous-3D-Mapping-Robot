@@ -14,6 +14,8 @@ from scipy.spatial import KDTree
 from scipy.ndimage import binary_closing
 from numba import jit
 import argparse
+import socket
+import struct
 
 # --- SLAM Implementation ---
 def best_fit_transform(A, B):
@@ -481,16 +483,81 @@ slam_system = SimpleSLAM()
 # 46 degrees
 # 133 degrees
 
-class LidarSensor:
-    def __init__(self, port=None):
-        if port is None:
-            port = self._detect_serial_port()
+# --- Network Lidar Wrapper ---
+class NetworkRPLidar:
+    def __init__(self, port=12345):
+        self.port = port
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.bind(('0.0.0.0', self.port))
+        self.sock.listen(1)
+        self.conn = None
+        self.addr = None
+        print(f"Network Lidar: Listening on 0.0.0.0:{self.port}...")
+        print("Waiting for connection from Raspberry Pi...")
+        self.conn, self.addr = self.sock.accept()
+        print(f"Network Lidar: Connected by {self.addr}")
+
+    def iter_measurements(self, max_buf_meas=3000):
+        # We ignore max_buf_meas as we just stream what we get
+        struct_fmt = '<Bff' # uchar, float, float
+        struct_len = struct.calcsize(struct_fmt)
         
-        # Note: self.lidar is initialized inside _detect_serial_port if detection succeeds,
-        # otherwise we might need to initialize it here if specific port passed.
-        if not hasattr(self, 'lidar'):
-             print(f"Attempting to connect to specific/fallback port: {port}")
-             self.lidar = RPLidar(port, timeout=5)
+        while True:
+            try:
+                # Robustly read 'struct_len' bytes
+                data = b''
+                while len(data) < struct_len:
+                    packet = self.conn.recv(struct_len - len(data))
+                    if not packet:
+                        return # Connection closed
+                    data += packet
+                    
+                quality, angle, distance = struct.unpack(struct_fmt, data)
+                # Yield tuple compatible with RPLidar library: (new_scan, quality, angle, distance)
+                # We don't track new_scan bit in this simple protocol, passing False (0) is fine for our SLAM logic
+                yield (0, quality, angle, distance) 
+            except Exception as e:
+                print(f"Network error: {e}")
+                break
+                
+    def stop(self):
+        if self.conn:
+            self.conn.close()
+        self.sock.close()
+        
+    def stop_motor(self):
+        pass
+        
+    def disconnect(self):
+        self.stop()
+        
+    def clear_input(self):
+        pass
+        
+    def get_health(self):
+        return "Network Mode"
+        
+    def get_info(self):
+        return {"model": "Network", "serial": "Remote"}
+
+# --- Lidar Sensor Class ---
+class LidarSensor:
+    def __init__(self, port=None, network_mode=False, network_port=12345):
+        self.network_mode = network_mode
+        
+        if self.network_mode:
+            print(f"Initializing Network Lidar on port {network_port}...")
+            self.lidar = NetworkRPLidar(port=network_port)
+        else:
+            if port is None:
+                port = self._detect_serial_port()
+            
+            # Note: self.lidar is initialized inside _detect_serial_port if detection succeeds,
+            # otherwise we might need to initialize it here if specific port passed.
+            if not hasattr(self, 'lidar'):
+                 print(f"Attempting to connect to specific/fallback port: {port}")
+                 self.lidar = RPLidar(port, timeout=5)
         
         # Robust initialization
         try:
@@ -803,6 +870,9 @@ if __name__ == "__main__":
     # Parse Arguments
     parser = argparse.ArgumentParser(description="LiDAR SLAM System")
     parser.add_argument("--headless", action="store_true", help="Run without a graphical window (for Pi/SSH)")
+    parser.add_argument("--port", type=str, default=None, help="Specific serial port for LiDAR (e.g. /dev/ttyUSB0)")
+    parser.add_argument("--network", action="store_true", help="Run in network mode (receive data from Pi)")
+    parser.add_argument("--net_port", type=int, default=12345, help="Network port for streaming (default: 12345)")
     args = parser.parse_args()
 
     if args.headless:
@@ -811,7 +881,11 @@ if __name__ == "__main__":
         print("Running in HEADLESS mode. No window will be shown.")
 
     # Initialize LiDAR
-    lidar = LidarSensor()
+    try:
+        lidar = LidarSensor(port=args.port, network_mode=args.network, network_port=args.net_port)
+    except Exception as e:
+        print(f"Failed to initialize LiDAR: {e}")
+        sys.exit(1)
     time.sleep(2) # Allow time for spin up and connection
     
     # Try to slow down motor to increase point density (more samples per degree)
