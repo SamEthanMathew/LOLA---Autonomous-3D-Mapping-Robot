@@ -511,6 +511,7 @@ class NetworkRPLidar:
             print(f"Network Lidar: Connected by {self.addr}")
 
         while True:
+            try:
                 # Resync logic: Read 1 byte until we find 0xA5
                 while True:
                     if not self.conn: return
