@@ -1,8 +1,7 @@
 # LOLA - Autonomous 3D-Mapping Robot
 
 **Built in one week for Build18 2026**
-
-![Build18](https://img.shields.io/badge/Build18-2026-blue)
+![Build18](https://img.shields.io/badge/license-MIT-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%204-red)
 
@@ -103,6 +102,21 @@ Build18-Contribution/
 
 ---
 
+## Bill of Materials (BOM)
+
+> Note: This BOM does **not** include the Raspberry Pi 4 and miscellaneous wiring/fasteners, which were not included in cost.
+
+| # | Item | Qty | Unit Cost (USD) | Total (USD) | Product Link |
+|---:|------|---:|----------------:|------------:|--------------|
+| 1 | Motor Driver | 1 | 10.59 | 10.59 | [L298N Motor Driver](https://www.amazon.com/dp/B0C5JCF5RS?ref=ppx_yo2ov_dt_b_fed_asin_title) |
+| 2 | Robot Car Chassis | 1 | 39.21 | 39.21 | [Mecanum Robot Chassis](https://www.seeedstudio.com/Robot-car-Kit-RC-Smart-Car-Chassis-p-4226.html) |
+| 3 | LiDAR Sensor | 1 | 104.94 | 104.94 | [RPLIDAR A1M8](https://a.co/d/cjdxPnk) |
+| 4 | Pi4 Power Supply | 1 | ~ | ~ | Used a power bank |
+| 5 | 9V Battery | 2 | ~ | ~ | 9V Alkaline Batteries |
+|  | **Total** |  |  | **154.74** |  |
+
+
+
 ## Installation & Setup
 
 ### On Raspberry Pi 4
@@ -187,11 +201,11 @@ Loads the planned path and sends motor commands to follow waypoints autonomously
 ## Team
 
 Built with ❤️ by:
-- **Sam**
-- **Darren**
-- **Tanay**
-- **Jayde**
-- **Jintong**
+- **[Sam](https://www.linkedin.com/in/sam-mathew-1a9778254/)**
+- **[Darren](https://www.linkedin.com/in/darrpinto/)**
+- **[Tanay](https://www.linkedin.com/in/tanay-mishra-a86b25274/)**
+- **[Jayden](https://www.linkedin.com/in/jayden-chen-3038a22a7/)**
+- **[Jintong](https://www.linkedin.com/in/jintong-wang-096645289/)**
 
 ---
 
@@ -202,8 +216,20 @@ Huge thanks to:
 - Carnegie Mellon **ECE Department**
 - All mentors who guided us throughout the sprint
 - Open-source projects: CUT3R, RPLiDAR drivers, NumPy, SciPy
-
 ---
+
+## Citation
+
+If you use CUT3R in your work, please cite:
+
+```bibtex
+@inproceedings{cut3r,
+  author    = {Qianqian Wang* and Yifei Zhang* and Aleksander Holynski and Alexei A. Efros and Angjoo Kanazawa},
+  title     = {Continuous 3D Perception Model with Persistent State},
+  booktitle = {CVPR},
+  year      = {2025}
+}
+```
 
 ## License
 
